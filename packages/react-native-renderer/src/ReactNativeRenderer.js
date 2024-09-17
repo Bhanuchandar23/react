@@ -8,7 +8,7 @@
  */
 
 import type {ReactPortal, ReactNodeList} from 'shared/ReactTypes';
-import type {ElementRef, Element, ElementType} from 'react';
+import type {ElementRef, ElementType, MixedElement} from 'react';
 import type {FiberRoot} from 'react-reconciler/src/ReactInternalTypes';
 import type {RenderRootOptions} from './ReactNativeTypes';
 
@@ -32,16 +32,11 @@ import {
   setBatchingImplementation,
   batchedUpdates,
 } from './legacy-events/ReactGenericBatching';
-import ReactVersion from 'shared/ReactVersion';
 // Modules provided by RN:
 import {UIManager} from 'react-native/Libraries/ReactPrivate/ReactNativePrivateInterface';
 
 import {getClosestInstanceFromNode} from './ReactNativeComponentTree';
-import {
-  getInspectorDataForViewTag,
-  getInspectorDataForViewAtPoint,
-  getInspectorDataForInstance,
-} from './ReactNativeFiberInspector';
+import {getInspectorDataForInstance} from './ReactNativeFiberInspector';
 import {LegacyRoot} from 'react-reconciler/src/ReactRootTags';
 import {
   findHostInstance_DEPRECATED,
@@ -55,6 +50,20 @@ import {disableLegacyMode} from 'shared/ReactFeatureFlags';
 
 // Module provided by RN:
 import {ReactFiberErrorDialog} from 'react-native/Libraries/ReactPrivate/ReactNativePrivateInterface';
+
+import reactNativePackageVersion from 'shared/ReactVersion';
+import * as IsomorphicReactPackage from 'react';
+
+const isomorphicReactPackageVersion = IsomorphicReactPackage.version;
+if (isomorphicReactPackageVersion !== reactNativePackageVersion) {
+  throw new Error(
+    'Incompatible React versions: The "react" and "react-native-renderer" packages must ' +
+      'have the exact same version. Instead got:\n' +
+      `  - react:                  ${isomorphicReactPackageVersion}\n` +
+      `  - react-native-renderer:  ${reactNativePackageVersion}\n` +
+      'Learn more: https://react.dev/warnings/version-mismatch',
+  );
+}
 
 if (typeof ReactFiberErrorDialog.showErrorDialog !== 'function') {
   throw new Error(
@@ -108,7 +117,7 @@ function nativeOnCaughtError(
 }
 
 function render(
-  element: Element<ElementType>,
+  element: MixedElement,
   containerTag: number,
   callback: ?() => void,
   options: ?RenderRootOptions,
@@ -219,17 +228,4 @@ export {
   isChildPublicInstance,
 };
 
-injectIntoDevTools({
-  findFiberByHostInstance: getClosestInstanceFromNode,
-  bundleType: __DEV__ ? 1 : 0,
-  version: ReactVersion,
-  rendererPackageName: 'react-native-renderer',
-  rendererConfig: {
-    getInspectorDataForInstance,
-    getInspectorDataForViewTag: getInspectorDataForViewTag,
-    getInspectorDataForViewAtPoint: getInspectorDataForViewAtPoint.bind(
-      null,
-      findNodeHandle,
-    ),
-  },
-});
+injectIntoDevTools();

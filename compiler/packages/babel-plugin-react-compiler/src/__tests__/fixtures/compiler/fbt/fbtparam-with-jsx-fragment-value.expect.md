@@ -2,8 +2,8 @@
 ## Input
 
 ```javascript
-import fbt from "fbt";
-import { identity } from "shared-runtime";
+import fbt from 'fbt';
+import {identity} from 'shared-runtime';
 
 function Component(props) {
   return (
@@ -35,7 +35,7 @@ function Component(props) {
         value={fbt._(
           "{value}%",
           [fbt._param("value", <>{identity(props.text)}</>)],
-          { hk: "10F5Cc" }
+          { hk: "10F5Cc" },
         )}
       />
     );

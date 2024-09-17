@@ -16,6 +16,11 @@ function normalizeCodeLocInfo(str) {
   // React format:
   //    in Component (at filename.js:123)
   return str.replace(/\n +(?:at|in) ([\S]+)[^\n]*/g, function (m, name) {
+    if (name.endsWith('.render')) {
+      // Class components will have the `render` method as part of their stack trace.
+      // We strip that out in our normalization to make it look more like component stacks.
+      name = name.slice(0, name.length - 7);
+    }
     return '\n    in ' + name + ' (at **)';
   });
 }
@@ -73,6 +78,34 @@ const createMatcherFor = (consoleMethod, matcherName) =>
         // and React addendums because they're too noisy.
         if (!logAllErrors && shouldIgnoreConsoleError(format, args)) {
           return;
+        }
+
+        // Append Component Stacks. Simulates a framework or DevTools appending them.
+        if (
+          typeof format === 'string' &&
+          (consoleMethod === 'error' || consoleMethod === 'warn')
+        ) {
+          const React = require('react');
+          if (React.captureOwnerStack) {
+            // enableOwnerStacks enabled. When it's always on, we can assume this case.
+            const stack = React.captureOwnerStack();
+            if (stack) {
+              format += '%s';
+              args.push(stack);
+            }
+          } else {
+            // Otherwise we have to use internals to emulate parent stacks.
+            const ReactSharedInternals =
+              React.__CLIENT_INTERNALS_DO_NOT_USE_OR_WARN_USERS_THEY_CANNOT_UPGRADE ||
+              React.__SERVER_INTERNALS_DO_NOT_USE_OR_WARN_USERS_THEY_CANNOT_UPGRADE;
+            if (ReactSharedInternals && ReactSharedInternals.getCurrentStack) {
+              const stack = ReactSharedInternals.getCurrentStack();
+              if (stack !== '') {
+                format += '%s';
+                args.push(stack);
+              }
+            }
+          }
         }
 
         const message = util.format(format, ...args);

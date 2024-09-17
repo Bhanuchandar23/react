@@ -72,6 +72,7 @@ import {
   LegacyHiddenComponent,
   CacheComponent,
   TracingMarkerComponent,
+  Throw,
 } from './ReactWorkTags';
 import {
   NoFlags,
@@ -94,6 +95,7 @@ import {
 import {
   debugRenderPhaseSideEffectsForStrictMode,
   disableLegacyContext,
+  disableLegacyContextForFunctionComponents,
   enableProfilerCommitHooks,
   enableProfilerTimer,
   enableScopeAPI,
@@ -110,6 +112,7 @@ import {
   disableLegacyMode,
   disableDefaultPropsExceptForClasses,
   disableStringRefs,
+  enableOwnerStacks,
 } from 'shared/ReactFeatureFlags';
 import isArray from 'shared/isArray';
 import shallowEqual from 'shared/shallowEqual';
@@ -124,7 +127,6 @@ import {
 } from 'shared/ReactSymbols';
 import {
   getCurrentFiberOwnerNameInDevOrNull,
-  setIsRendering,
   setCurrentFiber,
 } from './ReactCurrentFiber';
 import {
@@ -176,6 +178,7 @@ import {
   isPrimaryRenderer,
   getResource,
   createHoistableInstance,
+  HostTransitionContext,
 } from './ReactFiberConfig';
 import type {SuspenseInstance} from './ReactFiberConfig';
 import {shouldError, shouldSuspend} from './ReactFiberReconciler';
@@ -183,7 +186,6 @@ import {
   pushHostContext,
   pushHostContainer,
   getRootHostContainer,
-  HostTransitionContext,
 } from './ReactFiberHostContext';
 import {
   suspenseStackCursor,
@@ -297,6 +299,11 @@ import {
   pushRootMarkerInstance,
   TransitionTracingMarker,
 } from './ReactFiberTracingMarkerComponent';
+import {
+  callLazyInitInDEV,
+  callComponentInDEV,
+  callRenderInDEV,
+} from './ReactFiberCallUserSpace';
 
 // A special exception that's used to unwind the stack when an update flows
 // into a dehydrated boundary.
@@ -310,6 +317,7 @@ let didReceiveUpdate: boolean = false;
 
 let didWarnAboutBadClass;
 let didWarnAboutContextTypeOnFunctionComponent;
+let didWarnAboutContextTypes;
 let didWarnAboutGetDerivedStateOnFunctionComponent;
 let didWarnAboutFunctionRefs;
 export let didWarnAboutReassigningProps: boolean;
@@ -320,6 +328,7 @@ let didWarnAboutDefaultPropsOnFunctionComponent;
 if (__DEV__) {
   didWarnAboutBadClass = ({}: {[string]: boolean});
   didWarnAboutContextTypeOnFunctionComponent = ({}: {[string]: boolean});
+  didWarnAboutContextTypes = ({}: {[string]: boolean});
   didWarnAboutGetDerivedStateOnFunctionComponent = ({}: {[string]: boolean});
   didWarnAboutFunctionRefs = ({}: {[string]: boolean});
   didWarnAboutReassigningProps = false;
@@ -432,7 +441,6 @@ function updateForwardRef(
     markComponentRenderStarted(workInProgress);
   }
   if (__DEV__) {
-    setIsRendering(true);
     nextChildren = renderWithHooks(
       current,
       workInProgress,
@@ -442,7 +450,6 @@ function updateForwardRef(
       renderLanes,
     );
     hasId = checkDidRenderIdHook();
-    setIsRendering(false);
   } else {
     nextChildren = renderWithHooks(
       current,
@@ -1019,6 +1026,10 @@ function updateProfiler(
     workInProgress.flags |= Update;
 
     if (enableProfilerCommitHooks) {
+      // Schedule a passive effect for this Profiler to call onPostCommit hooks.
+      // This effect should be scheduled even if there is no onPostCommit callback for this Profiler,
+      // because the effect is also where times bubble to parent Profilers.
+      workInProgress.flags |= Passive;
       // Reset effect durations for the next eventual effect phase.
       // These are reset during render to allow the DevTools commit hook a chance to read them,
       const stateNode = workInProgress.stateNode;
@@ -1126,18 +1137,33 @@ function updateFunctionComponent(
       // in updateFuntionComponent but only on mount
       validateFunctionComponentInDev(workInProgress, workInProgress.type);
 
-      if (disableLegacyContext && Component.contextTypes) {
-        console.error(
-          '%s uses the legacy contextTypes API which was removed in React 19. ' +
-            'Use React.createContext() with React.useContext() instead.',
-          getComponentNameFromType(Component) || 'Unknown',
-        );
+      if (Component.contextTypes) {
+        const componentName = getComponentNameFromType(Component) || 'Unknown';
+
+        if (!didWarnAboutContextTypes[componentName]) {
+          didWarnAboutContextTypes[componentName] = true;
+          if (disableLegacyContext) {
+            console.error(
+              '%s uses the legacy contextTypes API which was removed in React 19. ' +
+                'Use React.createContext() with React.useContext() instead. ' +
+                '(https://react.dev/link/legacy-context)',
+              componentName,
+            );
+          } else {
+            console.error(
+              '%s uses the legacy contextTypes API which will be removed soon. ' +
+                'Use React.createContext() with React.useContext() instead. ' +
+                '(https://react.dev/link/legacy-context)',
+              componentName,
+            );
+          }
+        }
       }
     }
   }
 
   let context;
-  if (!disableLegacyContext) {
+  if (!disableLegacyContext && !disableLegacyContextForFunctionComponents) {
     const unmaskedContext = getUnmaskedContext(workInProgress, Component, true);
     context = getMaskedContext(workInProgress, unmaskedContext);
   }
@@ -1149,7 +1175,6 @@ function updateFunctionComponent(
     markComponentRenderStarted(workInProgress);
   }
   if (__DEV__) {
-    setIsRendering(true);
     nextChildren = renderWithHooks(
       current,
       workInProgress,
@@ -1159,7 +1184,6 @@ function updateFunctionComponent(
       renderLanes,
     );
     hasId = checkDidRenderIdHook();
-    setIsRendering(false);
   } else {
     nextChildren = renderWithHooks(
       current,
@@ -1393,20 +1417,18 @@ function finishClassComponent(
       markComponentRenderStarted(workInProgress);
     }
     if (__DEV__) {
-      setIsRendering(true);
-      nextChildren = instance.render();
+      nextChildren = callRenderInDEV(instance);
       if (
         debugRenderPhaseSideEffectsForStrictMode &&
         workInProgress.mode & StrictLegacyMode
       ) {
         setIsStrictModeForDevtools(true);
         try {
-          instance.render();
+          callRenderInDEV(instance);
         } finally {
           setIsStrictModeForDevtools(false);
         }
       }
-      setIsRendering(false);
     } else {
       nextChildren = instance.render();
     }
@@ -1690,22 +1712,36 @@ function updateHostHoistable(
   renderLanes: Lanes,
 ) {
   markRef(current, workInProgress);
-  const currentProps = current === null ? null : current.memoizedProps;
-  const resource = (workInProgress.memoizedState = getResource(
-    workInProgress.type,
-    currentProps,
-    workInProgress.pendingProps,
-  ));
+
   if (current === null) {
-    if (!getIsHydrating() && resource === null) {
-      // This is not a Resource Hoistable and we aren't hydrating so we construct the instance.
-      workInProgress.stateNode = createHoistableInstance(
-        workInProgress.type,
-        workInProgress.pendingProps,
-        getRootHostContainer(),
-        workInProgress,
-      );
+    const resource = getResource(
+      workInProgress.type,
+      null,
+      workInProgress.pendingProps,
+      null,
+    );
+    if (resource) {
+      workInProgress.memoizedState = resource;
+    } else {
+      if (!getIsHydrating()) {
+        // This is not a Resource Hoistable and we aren't hydrating so we construct the instance.
+        workInProgress.stateNode = createHoistableInstance(
+          workInProgress.type,
+          workInProgress.pendingProps,
+          getRootHostContainer(),
+          workInProgress,
+        );
+      }
     }
+  } else {
+    // Get Resource may or may not return a resource. either way we stash the result
+    // on memoized state.
+    workInProgress.memoizedState = getResource(
+      workInProgress.type,
+      current.memoizedProps,
+      workInProgress.pendingProps,
+      current.memoizedState,
+    );
   }
 
   // Resources never have reconciler managed children. It is possible for
@@ -1766,9 +1802,14 @@ function mountLazyComponent(
 
   const props = workInProgress.pendingProps;
   const lazyComponent: LazyComponentType<any, any> = elementType;
-  const payload = lazyComponent._payload;
-  const init = lazyComponent._init;
-  let Component = init(payload);
+  let Component;
+  if (__DEV__) {
+    Component = callLazyInitInDEV(lazyComponent);
+  } else {
+    const payload = lazyComponent._payload;
+    const init = lazyComponent._init;
+    Component = init(payload);
+  }
   // Store the unwrapped component in the type.
   workInProgress.type = Component;
 
@@ -1854,11 +1895,13 @@ function mountLazyComponent(
     }
   }
 
+  const loggedComponent = getComponentNameFromType(Component) || Component;
+
   // This message intentionally doesn't mention ForwardRef or MemoComponent
   // because the fact that it's a separate type of work is an
   // implementation detail.
   throw new Error(
-    `Element type is invalid. Received a promise that resolves to: ${Component}. ` +
+    `Element type is invalid. Received a promise that resolves to: ${loggedComponent}. ` +
       `Lazy element type must resolve to a class or function.${hint}`,
   );
 }
@@ -1904,14 +1947,12 @@ function mountIncompleteClassComponent(
 
 function validateFunctionComponentInDev(workInProgress: Fiber, Component: any) {
   if (__DEV__) {
-    if (Component) {
-      if (Component.childContextTypes) {
-        console.error(
-          'childContextTypes cannot be defined on a function component.\n' +
-            '  %s.childContextTypes = ...',
-          Component.displayName || Component.name || 'Component',
-        );
-      }
+    if (Component && Component.childContextTypes) {
+      console.error(
+        'childContextTypes cannot be defined on a function component.\n' +
+          '  %s.childContextTypes = ...',
+        Component.displayName || Component.name || 'Component',
+      );
     }
     if (!enableRefAsProp && workInProgress.ref !== null) {
       let info = '';
@@ -2393,10 +2434,10 @@ function mountSuspenseFallbackChildren(
       // final amounts. This seems counterintuitive, since we're intentionally
       // not measuring part of the render phase, but this makes it match what we
       // do in Concurrent Mode.
-      primaryChildFragment.actualDuration = 0;
-      primaryChildFragment.actualStartTime = -1;
-      primaryChildFragment.selfBaseDuration = 0;
-      primaryChildFragment.treeBaseDuration = 0;
+      primaryChildFragment.actualDuration = -0;
+      primaryChildFragment.actualStartTime = -1.1;
+      primaryChildFragment.selfBaseDuration = -0;
+      primaryChildFragment.treeBaseDuration = -0;
     }
 
     fallbackChildFragment = createFiberFromFragment(
@@ -2523,8 +2564,8 @@ function updateSuspenseFallbackChildren(
       // final amounts. This seems counterintuitive, since we're intentionally
       // not measuring part of the render phase, but this makes it match what we
       // do in Concurrent Mode.
-      primaryChildFragment.actualDuration = 0;
-      primaryChildFragment.actualStartTime = -1;
+      primaryChildFragment.actualDuration = -0;
+      primaryChildFragment.actualStartTime = -1.1;
       primaryChildFragment.selfBaseDuration =
         currentPrimaryChildFragment.selfBaseDuration;
       primaryChildFragment.treeBaseDuration =
@@ -3417,9 +3458,7 @@ function updateContextConsumer(
   }
   let newChildren;
   if (__DEV__) {
-    setIsRendering(true);
-    newChildren = render(newValue);
-    setIsRendering(false);
+    newChildren = callComponentInDEV(render, newValue, undefined);
   } else {
     newChildren = render(newValue);
   }
@@ -3665,6 +3704,10 @@ function attemptEarlyBailoutIfNoScheduledUpdate(
         }
 
         if (enableProfilerCommitHooks) {
+          // Schedule a passive effect for this Profiler to call onPostCommit hooks.
+          // This effect should be scheduled even if there is no onPostCommit callback for this Profiler,
+          // because the effect is also where times bubble to parent Profilers.
+          workInProgress.flags |= Passive;
           // Reset effect durations for the next eventual effect phase.
           // These are reset during render to allow the DevTools commit hook a chance to read them,
           const stateNode = workInProgress.stateNode;
@@ -3831,18 +3874,19 @@ function beginWork(
   if (__DEV__) {
     if (workInProgress._debugNeedsRemount && current !== null) {
       // This will restart the begin phase with a new fiber.
-      return remountFiber(
-        current,
-        workInProgress,
-        createFiberFromTypeAndProps(
-          workInProgress.type,
-          workInProgress.key,
-          workInProgress.pendingProps,
-          workInProgress._debugOwner || null,
-          workInProgress.mode,
-          workInProgress.lanes,
-        ),
+      const copiedFiber = createFiberFromTypeAndProps(
+        workInProgress.type,
+        workInProgress.key,
+        workInProgress.pendingProps,
+        workInProgress._debugOwner || null,
+        workInProgress.mode,
+        workInProgress.lanes,
       );
+      if (enableOwnerStacks) {
+        copiedFiber._debugStack = workInProgress._debugStack;
+        copiedFiber._debugTask = workInProgress._debugTask;
+      }
+      return remountFiber(current, workInProgress, copiedFiber);
     }
   }
 
@@ -4108,6 +4152,11 @@ function beginWork(
         );
       }
       break;
+    }
+    case Throw: {
+      // This represents a Component that threw in the reconciliation phase.
+      // So we'll rethrow here. This might be a Thenable.
+      throw workInProgress.pendingProps;
     }
   }
 

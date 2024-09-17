@@ -2,20 +2,20 @@
 ## Input
 
 ```javascript
-import fbt from "fbt";
-import { identity } from "shared-runtime";
+import fbt from 'fbt';
+import {identity} from 'shared-runtime';
 
 function Component(props) {
   const text = fbt(
-    `Hello, ${fbt.param("(key) name", identity(props.name))}!`,
-    "(description) Greeting"
+    `Hello, ${fbt.param('(key) name', identity(props.name))}!`,
+    '(description) Greeting'
   );
   return <div>{text}</div>;
 }
 
 export const FIXTURE_ENTRYPOINT = {
   fn: Component,
-  params: [{ name: "Sathya" }],
+  params: [{name: 'Sathya'}],
 };
 
 ```
@@ -34,7 +34,7 @@ function Component(props) {
     t0 = fbt._(
       "Hello, {(key) name}!",
       [fbt._param("(key) name", identity(props.name))],
-      { hk: "2sOsn5" }
+      { hk: "2sOsn5" },
     );
     $[0] = props.name;
     $[1] = t0;

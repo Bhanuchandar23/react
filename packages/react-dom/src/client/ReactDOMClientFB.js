@@ -25,8 +25,10 @@ import {createPortal as createPortalImpl} from 'react-reconciler/src/ReactPortal
 import {canUseDOM} from 'shared/ExecutionEnvironment';
 import ReactVersion from 'shared/ReactVersion';
 
+import {ensureCorrectIsomorphicReactVersion} from '../shared/ensureCorrectIsomorphicReactVersion';
+ensureCorrectIsomorphicReactVersion();
+
 import {
-  getClosestInstanceFromNode,
   getInstanceFromNode,
   getNodeFromInstance,
   getFiberCurrentPropsFromNode,
@@ -87,9 +89,7 @@ function createPortal(
 // Overload the definition to the two valid signatures.
 // Warning, this opts-out of checking the function body.
 declare function flushSyncFromReconciler<R>(fn: () => R): R;
-// eslint-disable-next-line no-redeclare
 declare function flushSyncFromReconciler(): void;
-// eslint-disable-next-line no-redeclare
 function flushSyncFromReconciler<R>(fn: (() => R) | void): R | void {
   if (__DEV__) {
     if (isAlreadyRendering()) {
@@ -100,6 +100,7 @@ function flushSyncFromReconciler<R>(fn: (() => R) | void): R | void {
       );
     }
   }
+  // $FlowFixMe[incompatible-call]
   return flushSyncWithoutWarningIfAlreadyRendering(fn);
 }
 
@@ -146,12 +147,7 @@ Internals.Events /* Events */ = [
   unstable_batchedUpdates,
 ];
 
-const foundDevTools = injectIntoDevTools({
-  findFiberByHostInstance: getClosestInstanceFromNode,
-  bundleType: __DEV__ ? 1 : 0,
-  version: ReactVersion,
-  rendererPackageName: 'react-dom',
-});
+const foundDevTools = injectIntoDevTools();
 
 if (__DEV__) {
   if (!foundDevTools && canUseDOM && window.top === window.self) {

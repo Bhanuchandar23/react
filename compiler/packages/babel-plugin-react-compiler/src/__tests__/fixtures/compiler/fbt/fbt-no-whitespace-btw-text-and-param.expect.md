@@ -2,10 +2,10 @@
 ## Input
 
 ```javascript
-import fbt from "fbt";
+import fbt from 'fbt';
 
 const _ = fbt;
-function Component({ value }: { value: string }) {
+function Component({value}: {value: string}) {
   return (
     <fbt desc="descdesc">
       Before text<fbt:param name="paramName">{value}</fbt:param>After text
@@ -15,7 +15,7 @@ function Component({ value }: { value: string }) {
 
 export const FIXTURE_ENTRYPOINT = {
   fn: Component,
-  params: [{ value: "hello world" }],
+  params: [{value: 'hello world'}],
 };
 
 ```
@@ -35,7 +35,7 @@ function Component(t0) {
     t1 = fbt._(
       "Before text{paramName}After text",
       [fbt._param("paramName", value)],
-      { hk: "aKEGX" }
+      { hk: "aKEGX" },
     );
     $[0] = value;
     $[1] = t1;

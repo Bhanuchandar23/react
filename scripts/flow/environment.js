@@ -26,7 +26,11 @@ declare const AggregateError: Class<Error>;
 declare const FinalizationRegistry: any;
 
 declare module 'create-react-class' {
-  declare const exports: React$CreateClass;
+  declare const exports: $FlowFixMe;
+}
+
+declare interface ConsoleTask {
+  run<T>(f: () => T): T;
 }
 
 // Flow hides the props of React$Element, this overrides it to unhide
@@ -41,6 +45,8 @@ declare opaque type React$Element<
   +key: React$Key | null,
   +ref: any,
 };
+
+declare type React$CustomJSXFactory = any;
 
 declare const trustedTypes: {
   isHTML: (value: any) => boolean,

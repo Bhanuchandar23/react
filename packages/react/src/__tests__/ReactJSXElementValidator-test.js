@@ -209,41 +209,10 @@ describe('ReactJSXElementValidator', () => {
       'Each child in a list should have a unique "key" prop.' +
         '\n\nCheck the render method of `ParentComp`. It was passed a child from MyComp. ' +
         'See https://react.dev/link/warning-keys for more information.\n' +
-        // TODO: Because this validates after the div has been mounted, it is part of
-        // the parent stack but since owner stacks will switch to owners this goes away again.
         '    in div (at **)\n' +
         '    in MyComp (at **)\n' +
         '    in ParentComp (at **)',
     );
-  });
-
-  it('gives a helpful error when passing null, undefined, or boolean', () => {
-    const Undefined = undefined;
-    const Null = null;
-    const True = true;
-    const Div = 'div';
-    expect(() => void (<Undefined />)).toErrorDev(
-      'Warning: React.jsx: type is invalid -- expected a string ' +
-        '(for built-in components) or a class/function (for composite ' +
-        'components) but got: undefined. You likely forgot to export your ' +
-        "component from the file it's defined in, or you might have mixed up " +
-        'default and named imports.',
-      {withoutStack: true},
-    );
-    expect(() => void (<Null />)).toErrorDev(
-      'Warning: React.jsx: type is invalid -- expected a string ' +
-        '(for built-in components) or a class/function (for composite ' +
-        'components) but got: null.',
-      {withoutStack: true},
-    );
-    expect(() => void (<True />)).toErrorDev(
-      'Warning: React.jsx: type is invalid -- expected a string ' +
-        '(for built-in components) or a class/function (for composite ' +
-        'components) but got: boolean.',
-      {withoutStack: true},
-    );
-    // No error expected
-    void (<Div />);
   });
 
   it('warns for fragments with illegal attributes', async () => {
@@ -324,9 +293,7 @@ describe('ReactJSXElementValidator', () => {
           </>,
         );
       });
-    }).toErrorDev('Encountered two children with the same key, `a`.', {
-      withoutStack: true,
-    });
+    }).toErrorDev('Encountered two children with the same key, `a`.');
   });
 
   it('does not call lazy initializers eagerly', () => {

@@ -58,7 +58,7 @@ function ComponentD(props) {
 
 export const FIXTURE_ENTRYPOINT = {
   fn: ComponentA,
-  params: [{ a: 1, b: false, d: 3 }],
+  params: [{a: 1, b: false, d: 3}],
 };
 
 ```
@@ -66,8 +66,7 @@ export const FIXTURE_ENTRYPOINT = {
 ## Code
 
 ```javascript
-import { c as _c } from "react/compiler-runtime";
-/**
+import { c as _c } from "react/compiler-runtime"; /**
  * props.b does *not* influence `a`
  */
 function ComponentA(props) {

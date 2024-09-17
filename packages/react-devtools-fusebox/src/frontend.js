@@ -19,16 +19,12 @@ import type {
 } from 'react-devtools-shared/src/frontend/types';
 import type {FrontendBridge} from 'react-devtools-shared/src/bridge';
 import type {
+  CanViewElementSource,
+  TabID,
   ViewAttributeSource,
   ViewElementSource,
-  CanViewElementSource,
 } from 'react-devtools-shared/src/devtools/views/DevTools';
-
-type Config = {
-  checkBridgeProtocolCompatibility?: boolean,
-  supportsNativeInspection?: boolean,
-  supportsProfiling?: boolean,
-};
+import type {Config} from 'react-devtools-shared/src/devtools/store';
 
 export function createBridge(wall?: Wall): FrontendBridge {
   if (wall != null) {
@@ -42,7 +38,7 @@ export function createStore(bridge: FrontendBridge, config?: Config): Store {
   return new Store(bridge, {
     checkBridgeProtocolCompatibility: true,
     supportsTraceUpdates: true,
-    supportsNativeInspection: true,
+    supportsClickToInspect: true,
     ...config,
   });
 }
@@ -56,10 +52,11 @@ type InitializationOptions = {
   canViewElementSourceFunction?: CanViewElementSource,
 };
 
-export function initialize(
+function initializeTab(
+  tab: TabID,
   contentWindow: Element | Document,
   options: InitializationOptions,
-): void {
+) {
   const {
     bridge,
     store,
@@ -75,7 +72,8 @@ export function initialize(
       bridge={bridge}
       browserTheme={theme}
       store={store}
-      showTabBar={true}
+      showTabBar={false}
+      overrideTab={tab}
       warnIfLegacyBackendDetected={true}
       enabledInspectedElementContextMenu={true}
       viewAttributeSourceFunction={viewAttributeSourceFunction}
@@ -83,4 +81,18 @@ export function initialize(
       canViewElementSourceFunction={canViewElementSourceFunction}
     />,
   );
+}
+
+export function initializeComponents(
+  contentWindow: Element | Document,
+  options: InitializationOptions,
+): void {
+  initializeTab('components', contentWindow, options);
+}
+
+export function initializeProfiler(
+  contentWindow: Element | Document,
+  options: InitializationOptions,
+): void {
+  initializeTab('profiler', contentWindow, options);
 }

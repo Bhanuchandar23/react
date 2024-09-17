@@ -87,10 +87,8 @@ import {
 import {ConcurrentRoot} from './ReactRootTags';
 import {noopSuspenseyCommitThenable} from './ReactFiberThenable';
 import {REACT_POSTPONE_TYPE} from 'shared/ReactSymbols';
-import {
-  setCurrentDebugFiberInDEV,
-  getCurrentFiber as getCurrentDebugFiberInDEV,
-} from './ReactCurrentFiber';
+import {runWithFiberInDEV} from './ReactCurrentFiber';
+import {callComponentDidCatchInDEV} from './ReactFiberCallUserSpace';
 
 function createRootErrorUpdate(
   root: FiberRoot,
@@ -104,10 +102,11 @@ function createRootErrorUpdate(
   // being called "element".
   update.payload = {element: null};
   update.callback = () => {
-    const prevFiber = getCurrentDebugFiberInDEV(); // should just be the root
-    setCurrentDebugFiberInDEV(errorInfo.source);
-    logUncaughtError(root, errorInfo);
-    setCurrentDebugFiberInDEV(prevFiber);
+    if (__DEV__) {
+      runWithFiberInDEV(errorInfo.source, logUncaughtError, root, errorInfo);
+    } else {
+      logUncaughtError(root, errorInfo);
+    }
   };
   return update;
 }
@@ -134,10 +133,17 @@ function initializeClassErrorUpdate(
       if (__DEV__) {
         markFailedErrorBoundaryForHotReloading(fiber);
       }
-      const prevFiber = getCurrentDebugFiberInDEV(); // should be the error boundary
-      setCurrentDebugFiberInDEV(errorInfo.source);
-      logCaughtError(root, fiber, errorInfo);
-      setCurrentDebugFiberInDEV(prevFiber);
+      if (__DEV__) {
+        runWithFiberInDEV(
+          errorInfo.source,
+          logCaughtError,
+          root,
+          fiber,
+          errorInfo,
+        );
+      } else {
+        logCaughtError(root, fiber, errorInfo);
+      }
     };
   }
 
@@ -148,10 +154,17 @@ function initializeClassErrorUpdate(
       if (__DEV__) {
         markFailedErrorBoundaryForHotReloading(fiber);
       }
-      const prevFiber = getCurrentDebugFiberInDEV(); // should be the error boundary
-      setCurrentDebugFiberInDEV(errorInfo.source);
-      logCaughtError(root, fiber, errorInfo);
-      setCurrentDebugFiberInDEV(prevFiber);
+      if (__DEV__) {
+        runWithFiberInDEV(
+          errorInfo.source,
+          logCaughtError,
+          root,
+          fiber,
+          errorInfo,
+        );
+      } else {
+        logCaughtError(root, fiber, errorInfo);
+      }
       if (typeof getDerivedStateFromError !== 'function') {
         // To preserve the preexisting retry behavior of error boundaries,
         // we keep track of which ones already failed during this batch.
@@ -160,11 +173,15 @@ function initializeClassErrorUpdate(
         // not defined.
         markLegacyErrorBoundaryAsFailed(this);
       }
-      const error = errorInfo.value;
-      const stack = errorInfo.stack;
-      this.componentDidCatch(error, {
-        componentStack: stack !== null ? stack : '',
-      });
+      if (__DEV__) {
+        callComponentDidCatchInDEV(this, errorInfo);
+      } else {
+        const error = errorInfo.value;
+        const stack = errorInfo.stack;
+        this.componentDidCatch(error, {
+          componentStack: stack !== null ? stack : '',
+        });
+      }
       if (__DEV__) {
         if (typeof getDerivedStateFromError !== 'function') {
           // If componentDidCatch is the only error boundary method defined,

@@ -2,20 +2,26 @@
 ## Input
 
 ```javascript
-import fbt from "fbt";
+import fbt from 'fbt';
 
 function Foo(props) {
   return (
     <fbt desc="Some text to be translated">
       <fbt:enum
-        enum-range={{ "0": "hello", "1": "goodbye" }}
-        value={props.value ? "0" : "1"}
-      />{" "}
+        enum-range={{'0': 'hello', '1': 'goodbye'}}
+        value={props.value ? '0' : '1'}
+      />{' '}
       <fbt:param name="value">{props.value}</fbt:param>
-      {", "}
+      {', '}
     </fbt>
   );
 }
+
+export const FIXTURE_ENTRYPOINT = {
+  fn: Foo,
+  params: [{value: 1}],
+  sequentialRenders: [{value: 1}, {value: 0}],
+};
 
 ```
 
@@ -36,10 +42,10 @@ function Foo(props) {
         fbt._param(
           "value",
 
-          props.value
+          props.value,
         ),
       ],
-      { hk: "Ri5kJ" }
+      { hk: "Ri5kJ" },
     );
     $[0] = props.value;
     $[1] = t0;
@@ -49,5 +55,14 @@ function Foo(props) {
   return t0;
 }
 
+export const FIXTURE_ENTRYPOINT = {
+  fn: Foo,
+  params: [{ value: 1 }],
+  sequentialRenders: [{ value: 1 }, { value: 0 }],
+};
+
 ```
       
+### Eval output
+(kind: ok) hello 1,
+goodbye 0,

@@ -760,7 +760,6 @@ describe('ReactUpdates', () => {
       });
     });
 
-    /* eslint-disable indent */
     expect(updates).toEqual([
       'Outer-render-0',
       'Inner-render-0-0',
@@ -789,7 +788,6 @@ describe('ReactUpdates', () => {
       'Inner-didUpdate-2-2',
       'Inner-callback-2',
     ]);
-    /* eslint-enable indent */
   });
 
   it('should flush updates in the correct order across roots', async () => {
@@ -1804,7 +1802,7 @@ describe('ReactUpdates', () => {
         await act(() => ReactDOM.flushSync(() => root.render(<App />)));
       }).rejects.toThrow('Maximum update depth exceeded');
     }).toErrorDev(
-      'Warning: Cannot update a component (`App`) while rendering a different component (`Child`)',
+      'Cannot update a component (`App`) while rendering a different component (`Child`)',
     );
   });
 
@@ -1839,7 +1837,7 @@ describe('ReactUpdates', () => {
       }
       expect(error.message).toMatch('Maximum update depth exceeded');
     }).toErrorDev(
-      'Warning: Cannot update a component (`App`) while rendering a different component (`Child`)',
+      'Cannot update a component (`App`) while rendering a different component (`Child`)',
     );
   });
 
@@ -1848,7 +1846,7 @@ describe('ReactUpdates', () => {
     it('warns about a deferred infinite update loop with useEffect', async () => {
       function NonTerminating() {
         const [step, setStep] = React.useState(0);
-        React.useEffect(() => {
+        React.useEffect(function myEffect() {
           setStep(x => x + 1);
         });
         return step;
@@ -1859,11 +1857,15 @@ describe('ReactUpdates', () => {
       }
 
       let error = null;
-      let stack = null;
+      let ownerStack = null;
+      let debugStack = null;
       const originalConsoleError = console.error;
-      console.error = (e, s) => {
+      console.error = e => {
         error = e;
-        stack = s;
+        ownerStack = gate(flags => flags.enableOwnerStacks)
+          ? React.captureOwnerStack()
+          : null;
+        debugStack = new Error().stack;
         Scheduler.log('stop');
       };
       try {
@@ -1876,7 +1878,13 @@ describe('ReactUpdates', () => {
       }
 
       expect(error).toContain('Maximum update depth exceeded');
-      expect(stack).toContain('at NonTerminating');
+      // The currently executing effect should be on the native stack
+      expect(debugStack).toContain('at myEffect');
+      if (gate(flags => flags.enableOwnerStacks)) {
+        expect(ownerStack).toContain('at App');
+      } else {
+        expect(ownerStack).toBe(null);
+      }
     });
 
     it('can have nested updates if they do not cross the limit', async () => {

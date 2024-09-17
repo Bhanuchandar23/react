@@ -5,12 +5,12 @@
  * LICENSE file in the root directory of this source tree.
  */
 
-import { Monaco } from "@monaco-editor/react";
+import {Monaco} from '@monaco-editor/react';
 import {
   CompilerErrorDetail,
   ErrorSeverity,
-} from "babel-plugin-react-compiler/src";
-import { MarkerSeverity, type editor } from "monaco-editor";
+} from 'babel-plugin-react-compiler/src';
+import {MarkerSeverity, type editor} from 'monaco-editor';
 
 function mapReactCompilerSeverityToMonaco(
   level: ErrorSeverity,
@@ -28,7 +28,7 @@ function mapReactCompilerDiagnosticToMonacoMarker(
   detail: CompilerErrorDetail,
   monaco: Monaco,
 ): editor.IMarkerData | null {
-  if (detail.loc == null || typeof detail.loc === "symbol") {
+  if (detail.loc == null || typeof detail.loc === 'symbol') {
     return null;
   }
   const severity = mapReactCompilerSeverityToMonaco(detail.severity, monaco);
@@ -63,8 +63,8 @@ export function renderReactCompilerMarkers({
     markers.push(marker);
   }
   if (markers.length > 0) {
-    monaco.editor.setModelMarkers(model, "owner", markers);
-    const newDecorations = markers.map((marker) => {
+    monaco.editor.setModelMarkers(model, 'owner', markers);
+    const newDecorations = markers.map(marker => {
       return {
         range: new monaco.Range(
           marker.startLineNumber,
@@ -74,15 +74,15 @@ export function renderReactCompilerMarkers({
         ),
         options: {
           isWholeLine: true,
-          glyphMarginClassName: "bg-red-300",
+          glyphMarginClassName: 'bg-red-300',
         },
       };
     });
     decorations = model.deltaDecorations(decorations, newDecorations);
   } else {
-    monaco.editor.setModelMarkers(model, "owner", []);
+    monaco.editor.setModelMarkers(model, 'owner', []);
     decorations = model.deltaDecorations(
-      model.getAllDecorations().map((d) => d.id),
+      model.getAllDecorations().map(d => d.id),
       [],
     );
   }

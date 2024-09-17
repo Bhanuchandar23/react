@@ -15,6 +15,7 @@ export type AbstractComponent<
 > = React$AbstractComponent<Config, Instance>;
 export type ElementType = React$ElementType;
 export type Element<+C> = React$Element<C>;
+export type MixedElement = React$Element<ElementType>;
 export type Key = React$Key;
 export type Ref<C> = React$Ref<C>;
 export type Node = React$Node;
@@ -30,7 +31,6 @@ export type ChildrenArray<+T> = $ReadOnlyArray<ChildrenArray<T>> | T;
 // We can't use export * from in Flow for some reason.
 export {
   __CLIENT_INTERNALS_DO_NOT_USE_OR_WARN_USERS_THEY_CANNOT_UPGRADE,
-  act,
   Children,
   Component,
   Fragment,

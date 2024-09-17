@@ -3,7 +3,7 @@
 
 ```javascript
 // @gating @compilationMode(infer)
-import React from "react";
+import React from 'react';
 export default React.forwardRef(function notNamedLikeAComponent(props) {
   return <div />;
 });
@@ -31,7 +31,7 @@ export default React.forwardRef(
       }
     : function notNamedLikeAComponent(props) {
         return <div />;
-      }
+      },
 );
 
 ```

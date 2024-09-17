@@ -297,12 +297,11 @@ describe('ReactJSXRuntime', () => {
         root.render(JSXRuntime.jsx(Parent, {}));
       });
     }).toErrorDev(
-      'Warning: Each child in a list should have a unique "key" prop.\n\n' +
+      'Each child in a list should have a unique "key" prop.\n\n' +
         'Check the render method of `Parent`. See https://react.dev/link/warning-keys for more information.\n' +
-        '    in Child (at **)\n' +
-        // TODO: Because this validates after the div has been mounted, it is part of
-        // the parent stack but since owner stacks will switch to owners this goes away again.
-        (gate(flags => flags.enableOwnerStacks) ? '    in div (at **)\n' : '') +
+        (gate(flags => flags.enableOwnerStacks)
+          ? ''
+          : '    in Child (at **)\n') +
         '    in Parent (at **)',
     );
   });
@@ -327,7 +326,7 @@ describe('ReactJSXRuntime', () => {
         root.render(JSXRuntime.jsx(Parent, {}));
       });
     }).toErrorDev(
-      'Warning: A props object containing a "key" prop is being spread into JSX:\n' +
+      'A props object containing a "key" prop is being spread into JSX:\n' +
         '  let props = {key: someKey, prop: ...};\n' +
         '  <Child {...props} />\n' +
         'React keys must be passed directly to JSX without using spread:\n' +
@@ -378,7 +377,7 @@ describe('ReactJSXRuntime', () => {
     expect(didCall).toBe(false);
   });
 
-  // @gate enableFastJSX && enableRefAsProp
+  // @gate enableRefAsProp
   it('does not clone props object if key and ref is not spread', async () => {
     const config = {
       foo: 'foo',

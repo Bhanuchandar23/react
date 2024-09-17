@@ -2,19 +2,19 @@
 ## Input
 
 ```javascript
-import fbt from "fbt";
+import fbt from 'fbt';
 
 function Component(props) {
   const text = fbt(
-    `${fbt.param("(key) count", props.count)} items`,
-    "(description) Number of items"
+    `${fbt.param('(key) count', props.count)} items`,
+    '(description) Number of items'
   );
   return <div>{text}</div>;
 }
 
 export const FIXTURE_ENTRYPOINT = {
   fn: Component,
-  params: [{ count: 2 }],
+  params: [{count: 2}],
 };
 
 ```
@@ -32,7 +32,7 @@ function Component(props) {
     t0 = fbt._(
       "{(key) count} items",
       [fbt._param("(key) count", props.count)],
-      { hk: "3yW91j" }
+      { hk: "3yW91j" },
     );
     $[0] = props.count;
     $[1] = t0;
